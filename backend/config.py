@@ -13,13 +13,17 @@ if os.getenv('ALLOWED_CHAT_IDS'):
     ALLOWED_CHAT_IDS = [int(chat_id.strip()) for chat_id in os.getenv('ALLOWED_CHAT_IDS').split(',')]
 
 # 欢迎消息配置
-WELCOME_MESSAGE = """长沙摸摸看高质量在发一组照片！
+WELCOME_MESSAGE = """杭州高端SPA会所欢迎您！优质服务等您体验🌸
 
-地址： #五一广场 #解放西 #芙蓉广场
+地址： #西湖区 #滨江区 #拱墅区
 
-无任何套路、无隐形消费、无强制消费、靠谱诚信经营
+🔥 服务特色：
+• 专业技师团队，手法娴熟
+• 环境优雅舒适，私密性强
+• 正规经营，诚信服务
 
-不要问这个在不在、那个在不在！直接过来海选！海选！海选‼️"""
+💆‍♀️ 多种项目可选，欢迎咨询了解！
+无套路消费，明码标价，让您放心享受！"""
 
 # 图片文件夹路径
 IMAGES_FOLDER = "images"
