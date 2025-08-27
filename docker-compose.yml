@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build: ./backend
+    container_name: telegram-welcome-bot
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ALLOWED_CHAT_IDS=${ALLOWED_CHAT_IDS:-}
+      - MAX_IMAGES=${MAX_IMAGES:-10}
+    volumes:
+      - ./images:/app/images
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - bot-network
+
+networks:
+  bot-network:
+    driver: bridge

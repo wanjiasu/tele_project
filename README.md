@@ -1,142 +1,140 @@
-# Telegram群组欢迎机器人
+# Telegram群组欢迎机器人 - FastAPI版本
 
-一个自动为新加入群组的用户发送包含图片集和欢迎文字的Telegram机器人。
+基于FastAPI的Telegram群组欢迎机器人，当新用户加入群组时，自动发送包含图片集和欢迎文字的消息。
 
-## 功能特点
+## 🚀 功能特性
 
-- 🎯 **自动检测新用户加入群组**
-- 📸 **发送随机图片集**（支持多张图片组合发送）
-- 💬 **自定义欢迎文字**
-- 🛡️ **群组权限控制**（可指定特定群组）
-- 🤖 **忽略机器人加入**
-- 📝 **完整日志记录**
+- **FastAPI框架**: 现代化的异步Python Web框架
+- **Docker支持**: 完整的容器化部署方案
+- **健康检查**: 内置健康检查端点
+- **API文档**: 自动生成的Swagger/OpenAPI文档
+- **自动欢迎**: 检测新用户加入并发送欢迎消息
+- **图片支持**: 随机发送欢迎图片集
 
-## 安装步骤
+## 📁 项目结构
 
-### 1. 克隆项目
+```
+tele_project/
+├── backend/              # FastAPI应用
+│   ├── main.py          # FastAPI主应用
+│   ├── config.py        # 配置文件
+│   ├── requirements.txt # Python依赖
+│   ├── Dockerfile       # Docker镜像构建文件
+│   └── .dockerignore    # Docker忽略文件
+├── images/              # 欢迎图片文件夹
+├── docker-compose.yml   # Docker Compose配置
+├── env.example         # 环境变量示例
+└── README.md           # 项目文档
+```
+
+## 🛠️ 快速开始
+
+### 1. 配置环境变量
+
+复制环境变量模板：
 ```bash
-git clone <repository-url>
-cd facebook_api
+cp env.example .env
 ```
 
-### 2. 安装依赖
+编辑`.env`文件，设置必要配置：
 ```bash
-pip install -r requirements.txt
-```
-
-### 3. 创建Telegram机器人
-1. 在Telegram中找到 [@BotFather](https://t.me/BotFather)
-2. 发送 `/newbot` 创建新机器人
-3. 按提示设置机器人名称和用户名
-4. 获取机器人Token
-
-### 4. 配置环境变量
-创建 `.env` 文件：
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件，填入你的机器人Token：
-```
 TELEGRAM_BOT_TOKEN=your_bot_token_here
-# 可选：指定特定群组ID
-# ALLOWED_CHAT_IDS=chat_id1,chat_id2
+ALLOWED_CHAT_IDS=  # 可选，用逗号分隔
+MAX_IMAGES=10
 ```
 
-### 5. 添加欢迎图片
-将你想要发送的图片放入 `images/` 文件夹中。支持的格式：
+### 2. 准备图片
+
+将欢迎图片放入`images/`文件夹，支持格式：
 - JPG/JPEG
-- PNG
+- PNG  
 - GIF
 
-**注意**：机器人会随机选择最多10张图片发送。
+### 3. 使用Docker Compose部署
 
-### 6. 自定义欢迎消息
-编辑 `config.py` 文件中的 `WELCOME_MESSAGE` 变量来自定义欢迎文字。
-
-## 使用方法
-
-### 启动机器人
 ```bash
-python telegram_bot.py
+# 构建并启动服务
+docker-compose up -d --build
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f telegram-bot
 ```
 
-### 将机器人添加到群组
-1. 将机器人添加到你的Telegram群组
-2. 给机器人管理员权限（必须）
-3. 当新用户加入群组时，机器人会自动发送欢迎消息
+## 🌐 API端点
 
-### 可用命令
-- `/start` - 开始使用机器人
-- `/help` - 显示帮助信息  
-- `/test_welcome` - 测试欢迎消息（仅群组管理员可用）
+- `GET /` - 根路径健康检查
+- `GET /health` - 健康检查端点
+- `GET /docs` - API文档 (Swagger UI)
+- `GET /bot/status` - 获取机器人状态
+- `POST /bot/test-welcome` - 测试欢迎消息
+- `GET /bot/images` - 获取可用图片列表
 
-## 配置选项
+## 🔧 配置选项
 
-### config.py 配置说明
-
-| 配置项 | 说明 | 默认值 |
-|--------|------|--------|
-| `BOT_TOKEN` | Telegram机器人Token | 从环境变量获取 |
-| `ALLOWED_CHAT_IDS` | 允许的群组ID列表（可选） | 空列表（所有群组） |
-| `WELCOME_MESSAGE` | 欢迎消息文字 | 可自定义 |
-| `IMAGES_FOLDER` | 图片文件夹路径 | "images" |
+| 环境变量 | 说明 | 默认值 |
+|---------|------|--------|
+| `TELEGRAM_BOT_TOKEN` | Telegram Bot Token | 必须设置 |
+| `ALLOWED_CHAT_IDS` | 允许的群组ID列表 | 空（允许所有） |
 | `MAX_IMAGES` | 最大图片数量 | 10 |
 
-### 获取群组ID
-如果想限制机器人只在特定群组工作：
-1. 将机器人添加到群组
-2. 发送消息到群组
-3. 查看机器人日志，会显示群组ID
-4. 将群组ID添加到 `ALLOWED_CHAT_IDS` 环境变量中
+## 🐳 Docker命令
 
-## 项目结构
+```bash
+# 启动服务
+docker-compose up -d
 
+# 停止服务  
+docker-compose down
+
+# 重启服务
+docker-compose restart
+
+# 查看日志
+docker-compose logs -f
+
+# 重新构建
+docker-compose up -d --build
 ```
-facebook_api/
-├── telegram_bot.py      # 主程序文件
-├── config.py           # 配置文件
-├── requirements.txt    # Python依赖
-├── .env               # 环境变量（需自创建）
-├── images/            # 欢迎图片文件夹
-└── README.md          # 说明文档
-```
 
-## 故障排除
+## 📋 使用方法
+
+1. 将机器人添加到Telegram群组
+2. 给机器人管理员权限
+3. 新用户加入时会自动触发欢迎消息
+4. 群组管理员可使用`/test_welcome`命令测试功能
+
+## 🚨 注意事项
+
+- 确保机器人有发送消息的权限
+- 图片文件大小不要超过Telegram限制
+- 建议定期检查机器人运行状态
+- 服务运行在8000端口
+
+## 🔍 故障排除
 
 ### 常见问题
 
-1. **机器人没有响应新用户加入**
-   - 确保机器人有管理员权限
-   - 检查机器人Token是否正确
-   - 查看控制台日志是否有错误信息
+1. **机器人无法启动**
+   - 检查`TELEGRAM_BOT_TOKEN`是否正确
+   - 查看容器日志：`docker-compose logs telegram-bot`
 
-2. **图片发送失败**
-   - 检查 `images/` 文件夹是否存在
-   - 确保图片文件格式正确
-   - 检查图片文件大小（Telegram限制单个文件最大50MB）
+2. **图片无法发送**
+   - 确保`images/`文件夹存在且包含图片
+   - 检查图片格式是否支持
 
-3. **权限错误**
-   - 确保机器人在群组中有管理员权限
-   - 检查群组设置是否允许机器人发送消息
+3. **服务无法访问**
+   - 检查端口是否被占用：`netstat -tulpn | grep 8000`
+   - 确认防火墙设置
 
-### 日志查看
-程序运行时会在控制台显示详细日志，包括：
-- 新用户加入事件
-- 图片选择和发送状态
-- 错误信息和调试信息
+### 健康检查
 
-## 技术说明
+```bash
+curl http://localhost:8000/health
+```
 
-- 使用 `python-telegram-bot` 库
-- 支持异步处理
-- 自动处理Telegram API限制
-- 完整的错误处理和日志记录
-
-## 许可证
+## 📄 许可证
 
 本项目采用MIT许可证。
-
-## 贡献
-
-欢迎提交Issue和Pull Request来改进这个项目！

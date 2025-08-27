@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Telegram群组欢迎机器人
+Telegram群组欢迎机器人 - FastAPI版本
 当新用户加入群组时，自动发送包含图片集和欢迎文字的消息
 """
 
@@ -9,7 +9,11 @@ import os
 import glob
 import random
 import logging
+import asyncio
 from typing import List
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from telegram import Update, InputMediaPhoto
 from telegram.ext import Application, ChatMemberHandler, CommandHandler, ContextTypes
 from telegram.constants import ChatMemberStatus
@@ -22,6 +26,134 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# 创建FastAPI应用
+app = FastAPI(
+    title="Telegram Welcome Bot API",
+    description="Telegram群组欢迎机器人API服务",
+    version="1.0.0"
+)
+
+# 全局变量存储机器人实例
+bot_instance = None
+
+class HealthResponse(BaseModel):
+    status: str
+    message: str
+    bot_status: str
+
+class TestWelcomeRequest(BaseModel):
+    chat_id: int
+
+class BotStatusResponse(BaseModel):
+    status: str
+    message: str
+    is_running: bool
+
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时初始化机器人"""
+    global bot_instance
+    try:
+        bot_instance = TelegramWelcomeBot()
+        logger.info("Telegram机器人初始化成功")
+    except Exception as e:
+        logger.error(f"Telegram机器人初始化失败: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时清理资源"""
+    global bot_instance
+    if bot_instance:
+        try:
+            await bot_instance.application.shutdown()
+            logger.info("Telegram机器人已关闭")
+        except Exception as e:
+            logger.error(f"关闭Telegram机器人时出错: {e}")
+
+@app.get("/", response_model=HealthResponse)
+async def root():
+    """根路径健康检查"""
+    bot_status = "running" if bot_instance else "not_initialized"
+    return HealthResponse(
+        status="healthy",
+        message="Telegram Welcome Bot API is running",
+        bot_status=bot_status
+    )
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check():
+    """健康检查端点"""
+    bot_status = "running" if bot_instance else "not_initialized"
+    return HealthResponse(
+        status="healthy",
+        message="Service is healthy",
+        bot_status=bot_status
+    )
+
+@app.get("/bot/status", response_model=BotStatusResponse)
+async def get_bot_status():
+    """获取机器人状态"""
+    if not bot_instance:
+        raise HTTPException(status_code=503, detail="Bot not initialized")
+    
+    try:
+        # 检查机器人是否正在运行
+        is_running = bot_instance.application.running
+        return BotStatusResponse(
+            status="success",
+            message="Bot status retrieved successfully",
+            is_running=is_running
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking bot status: {str(e)}")
+
+@app.post("/bot/test-welcome")
+async def test_welcome(request: TestWelcomeRequest, background_tasks: BackgroundTasks):
+    """测试欢迎消息（后台任务）"""
+    if not bot_instance:
+        raise HTTPException(status_code=503, detail="Bot not initialized")
+    
+    try:
+        # 在后台发送测试欢迎消息
+        background_tasks.add_task(
+            bot_instance.send_welcome_message, 
+            request.chat_id, 
+            bot_instance.application.context_types.context
+        )
+        
+        return JSONResponse(
+            content={
+                "status": "success",
+                "message": f"Test welcome message scheduled for chat {request.chat_id}"
+            },
+            status_code=200
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error scheduling test welcome: {str(e)}")
+
+@app.get("/bot/images")
+async def get_available_images():
+    """获取可用的图片列表"""
+    try:
+        if not os.path.exists(IMAGES_FOLDER):
+            return {"images": [], "message": "Images folder not found"}
+        
+        image_extensions = ['*.jpg', '*.jpeg', '*.png', '*.gif', '*.JPG', '*.JPEG', '*.PNG', '*.GIF']
+        image_files = []
+        
+        for extension in image_extensions:
+            image_files.extend(glob.glob(os.path.join(IMAGES_FOLDER, extension)))
+        
+        # 只返回文件名，不包含路径
+        image_names = [os.path.basename(img) for img in image_files]
+        
+        return {
+            "images": image_names,
+            "total_count": len(image_names),
+            "max_images": MAX_IMAGES
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting images: {str(e)}")
 
 class TelegramWelcomeBot:
     def __init__(self):
@@ -30,6 +162,9 @@ class TelegramWelcomeBot:
         
         self.application = Application.builder().token(BOT_TOKEN).build()
         self._setup_handlers()
+        
+        # 启动机器人（在后台运行）
+        asyncio.create_task(self._start_bot())
 
     def _setup_handlers(self):
         """设置消息处理器"""
@@ -43,6 +178,22 @@ class TelegramWelcomeBot:
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("test_welcome", self.test_welcome_command))
+
+    async def _start_bot(self):
+        """在后台启动机器人"""
+        try:
+            # 创建images文件夹（如果不存在）
+            if not os.path.exists(IMAGES_FOLDER):
+                os.makedirs(IMAGES_FOLDER)
+                logger.info(f"创建了图片文件夹: {IMAGES_FOLDER}")
+            
+            # 启动机器人
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.updater.start_polling(drop_pending_updates=True)
+            logger.info("Telegram机器人已在后台启动")
+        except Exception as e:
+            logger.error(f"启动机器人时出错: {e}")
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """处理 /start 命令"""
@@ -187,29 +338,6 @@ class TelegramWelcomeBot:
         except Exception as e:
             logger.error(f"发送欢迎消息时出错: {e}")
 
-    def run(self):
-        """启动机器人"""
-        logger.info("启动Telegram欢迎机器人...")
-        
-        # 创建images文件夹（如果不存在）
-        if not os.path.exists(IMAGES_FOLDER):
-            os.makedirs(IMAGES_FOLDER)
-            logger.info(f"创建了图片文件夹: {IMAGES_FOLDER}")
-        
-        # 启动机器人
-        self.application.run_polling(drop_pending_updates=True)
-
-
-def main():
-    """主函数"""
-    try:
-        bot = TelegramWelcomeBot()
-        bot.run()
-    except KeyboardInterrupt:
-        logger.info("机器人已停止")
-    except Exception as e:
-        logger.error(f"启动机器人时出错: {e}")
-
-
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
